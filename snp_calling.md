@@ -1,4 +1,4 @@
-# GATK calling snp
+# GATK calling germline variants
 ## 前期准备
 ### 下载参考基因组（推荐hg19或hg38）
 #### 1.从NCBI/ensembl/UCSC下载人类基因组  
