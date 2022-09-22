@@ -40,8 +40,10 @@ samtools index sample.dedup.bam
 ```
 #先对每个样本生成gvcf文件
 gatk HaplotypeCaller -R ref.fa -I sample.dedup.bam -ERC GVCF --minimum-mapping-quality 30 -O sample.g.vcf.gz
+
 #然后合并所有样本的gvcf文件
 gatk CombineGVCFs -R ref.fa --variant sample1.g.vcf --variant sample2.g.vcf --variant sample3.g.vcf --variant sample4.g.vcf -O SRR4.g.vcf
+
 #将gvcf文件转换为vcf文件
 gatk GenotypeGVCFs -R ref.fa -V SRR4.g.vcf -stand-call-conf 5 -O SRR4.vcf
 ```
