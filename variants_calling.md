@@ -30,7 +30,7 @@ bwa-mem2 index ref.fa -p ref
 bwa mem ref.fa sample_1.fastq.gz sample_2.fastq.gz -R '@RG\tID:sample\tLB:sample\tSM:sample\tPL:ILLUMINA' | samtools sort -@ 20 -O bam -o sample.sorted.bam
 samtools index sample.sorted.bam
 ```
-#### c.比对结果bam文件优化之假阳性reads去重复
+#### c.假阳性reads去重复
 ```
 gatk MarkDuplicates -I sample.sorted.bam -O sample.dedup.bam -M sample.dedup_metrics.txt
 samtools index sample.dedup.bam
@@ -56,10 +56,12 @@ gatk CombineGVCFs -R ref.fa --variant sample1.g.vcf --variant sample2.g.vcf --va
 gatk GenotypeGVCFs -R ref.fa -V SRR4.g.vcf -stand-call-conf 5 -O SRR4.vcf
 ```
 ### 2.Strelka2
+Kim, S., Scheffler, K., Halpern, A.L. et al. Strelka2: fast and accurate calling of germline and somatic variants. Nat Methods 15, 591–594 (2018). https://doi.org/10.1038/s41592-018-0051-x
 由 illumina 公司开发，用于突变检测，可以检测 somatic 和 germline ，通常来说，该软件对于小片段的 indel 检测效果比 Mutect2 更好。Strelka2 introduces a novel mixture-model-based estimation of insertion/deletion error parameters from each sample, an efficient tiered haplotype-modeling strategy, and a normal sample contamination model to improve liquid tumor analysis.
 ```
-configureStrelkaGermlineWorkflow.py --bam sample.recal.bam --referenceFasta ref.fa
+configureStrelkaGermlineWorkflow.py --bam sample.recal.bam --referenceFasta ref.fa --runDir /germline
 ```
+### 3.cgpCaVEManWrapper
 ## Somatic variants calling
 ### 1.GATK
 来自GATK官网的例子，使用Mutect2 call HCC1143肿瘤样本体细胞突变。The command calls somatic variants in the tumor sample and uses a matched normal, a panel of normals (PoN) and a population germline variant resource.
@@ -78,4 +80,10 @@ gatk Mutect2 \
     -O 1_somatic_m2.vcf.gz \
     -bamout 2_tumor_normal_m2.bam
  ```
- 
+### 2.Strelka2
+```
+# The candidate indel file ${MANTA_ANALYSIS_PATH}/results/variants/candidateSmallIndels.vcf.gz is a recommended best practice but not required. To generate these candidate indels the corresponding configuration for Manta is:
+${STRELKA_INSTALL_PATH}/bin/configManta.py --normalBam HCC1187BL.bam --tumorBam HCC1187C.bam --referenceFasta hg19.fa --runDir ${MANTA_ANALYSIS_PATH}
+# Somatic analysis
+${STRELKA_INSTALL_PATH}/bin/configureStrelkaSomaticWorkflow.py --normalBam HCC1187BL.bam --tumorBam HCC1187C.bam --referenceFasta hg19.fa --indelCandidates ${MANTA_ANALYSIS_PATH}/results/variants/candidateSmallIndels.vcf.gz --runDir ${STRELKA_ANALYSIS_PATH}
+```
