@@ -44,7 +44,7 @@ gatk ApplyBQSR --bqsr-recal-file sample.recal_data.table -R ref.fa -I sample.ded
 ```
 ## Germline variants calling
 ### 1.GATK
-GATK(全称 The Genome Analysis Toolkit)是Broad Institute开发的用于二代重测序数据分析的一款软件，是经常被使用的 variants calling 的软件之一。
+GATK(全称 The Genome Analysis Toolkit)是Broad Institute开发的用于二代重测序数据分析的一款软件，是经常被使用的 variants calling 的软件之一。https://gatk.broadinstitute.org/hc/en-us
 ```
 #先对每个样本生成gvcf文件
 gatk HaplotypeCaller -R ref.fa -I sample.recal.bam -ERC GVCF --minimum-mapping-quality 30 -O sample.g.vcf.gz
@@ -61,7 +61,6 @@ Kim, S., Scheffler, K., Halpern, A.L. et al. Strelka2: fast and accurate calling
 ```
 configureStrelkaGermlineWorkflow.py --bam sample.recal.bam --referenceFasta ref.fa --runDir /germline
 ```
-### 3.cgpCaVEManWrapper
 ## Somatic variants calling
 ### 1.GATK
 来自GATK官网的例子，使用Mutect2 call HCC1143肿瘤样本体细胞突变。The command calls somatic variants in the tumor sample and uses a matched normal, a panel of normals (PoN) and a population germline variant resource.
