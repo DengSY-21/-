@@ -8,7 +8,7 @@ install.packages("qtl")
 library(qtl)
 # 加载数据
 data(hyper)
-#  getting summary information on the data
+# getting summary information on the data
 summary(hyper)
 nind(hyper)
 nphe(hyper)
@@ -42,4 +42,10 @@ out.em <- scanone(hyper)
 out.hk <- scanone(hyper, method="hk")
 hyper <- sim.geno(hyper, step=2, n.draws=16, error.prob=0.01)
 out.imp <- scanone(hyper, method="imp")
+```
+The function scantwo performs a two-dimensional genome scan with a two-QTL model. For every pair of positions, it calculates a LOD score for the full model (two QTL plus interaction) and a LOD score for the additive model (two QTL but no interaction). This be quite time consuming, and so you may wish to do the calculations on a coarser grid.
+```
+hyper <- calc.genoprob(hyper, step=5, error.prob=0.01)
+out2.hk <- scantwo(hyper, method="hk")
+# One can also use method="em" or method="imp", but they are even more time consuming.
 ```
