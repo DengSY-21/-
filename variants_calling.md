@@ -44,7 +44,8 @@ gatk ApplyBQSR --bqsr-recal-file sample.recal_data.table -R ref.fa -I sample.ded
 ```
 ## Germline variants calling
 ### 1.GATK
-GATK(全称 The Genome Analysis Toolkit)是Broad Institute开发的用于二代重测序数据分析的一款软件，是经常被使用的 variants calling 的软件之一。https://gatk.broadinstitute.org/hc/en-us
+GATK(全称 The Genome Analysis Toolkit)是Broad Institute开发的用于二代重测序数据分析的一款软件，是经常被使用的 variants calling 的软件之一。<br>
+https://gatk.broadinstitute.org/hc/en-us
 ```
 #先对每个样本生成gvcf文件
 gatk HaplotypeCaller -R ref.fa -I sample.recal.bam -ERC GVCF --minimum-mapping-quality 30 -O sample.g.vcf.gz
@@ -56,14 +57,16 @@ gatk CombineGVCFs -R ref.fa --variant sample1.g.vcf --variant sample2.g.vcf --va
 gatk GenotypeGVCFs -R ref.fa -V SRR4.g.vcf -stand-call-conf 5 -O SRR4.vcf
 ```
 ### 2.Strelka2
-Kim, S., Scheffler, K., Halpern, A.L. et al. Strelka2: fast and accurate calling of germline and somatic variants. Nat Methods 15, 591–594 (2018). https://doi.org/10.1038/s41592-018-0051-x
-由 illumina 公司开发，用于突变检测，可以检测 somatic 和 germline ，通常来说，该软件对于小片段的 indel 检测效果比 Mutect2 更好。Strelka2 introduces a novel mixture-model-based estimation of insertion/deletion error parameters from each sample, an efficient tiered haplotype-modeling strategy, and a normal sample contamination model to improve liquid tumor analysis.
+Kim, S., Scheffler, K., Halpern, A.L. et al. Strelka2: fast and accurate calling of germline and somatic variants. Nat Methods 15, 591–594 (2018). https://doi.org/10.1038/s41592-018-0051-x <br>
+由 illumina 公司开发，用于突变检测，可以检测 somatic 和 germline ，通常来说，该软件对于小片段的 indel 检测效果比 Mutect2 更好。<br>
+Strelka2 introduces a novel mixture-model-based estimation of insertion/deletion error parameters from each sample, an efficient tiered haplotype-modeling strategy, and a normal sample contamination model to improve liquid tumor analysis.
 ```
 configureStrelkaGermlineWorkflow.py --bam sample.recal.bam --referenceFasta ref.fa --runDir /germline
 ```
 ## Somatic variants calling
 ### 1.GATK
-来自GATK官网的例子，使用Mutect2 call HCC1143肿瘤样本体细胞突变。The command calls somatic variants in the tumor sample and uses a matched normal, a panel of normals (PoN) and a population germline variant resource.
+来自GATK官网的例子，使用Mutect2 call HCC1143肿瘤样本体细胞突变。<br>
+The command calls somatic variants in the tumor sample and uses a matched normal, a panel of normals (PoN) and a population germline variant resource.
 ```
 gatk Mutect2 \
     -R hg38/Homo_sapiens_assembly38.fasta \
@@ -80,9 +83,11 @@ gatk Mutect2 \
     -bamout 2_tumor_normal_m2.bam
  ```
 ### 2.Strelka2
+The candidate indel file ${MANTA_ANALYSIS_PATH}/results/variants/candidateSmallIndels.vcf.gz is a recommended best practice but not required. To generate these candidate indels the corresponding configuration for Manta is:
 ```
-# The candidate indel file ${MANTA_ANALYSIS_PATH}/results/variants/candidateSmallIndels.vcf.gz is a recommended best practice but not required. To generate these candidate indels the corresponding configuration for Manta is:
 ${STRELKA_INSTALL_PATH}/bin/configManta.py --normalBam HCC1187BL.bam --tumorBam HCC1187C.bam --referenceFasta hg19.fa --runDir ${MANTA_ANALYSIS_PATH}
-# Somatic analysis
+```
+somatic analysis:
+```
 ${STRELKA_INSTALL_PATH}/bin/configureStrelkaSomaticWorkflow.py --normalBam HCC1187BL.bam --tumorBam HCC1187C.bam --referenceFasta hg19.fa --indelCandidates ${MANTA_ANALYSIS_PATH}/results/variants/candidateSmallIndels.vcf.gz --runDir ${STRELKA_ANALYSIS_PATH}
 ```
