@@ -2,7 +2,7 @@
 一般使用R/qtl <br>
 Broman KW, Wu H, Sen S, Churchill GA (2003) R/qtl: QTL mapping in experimental crosses. Bioinformatics
 19:889-890 <br>
-## Example 1: Hypertension
+## Example : Hypertension
 ```
 install.packages("qtl")
 library(qtl)
@@ -49,15 +49,3 @@ hyper <- calc.genoprob(hyper, step=5, error.prob=0.01)
 out2.hk <- scantwo(hyper, method="hk")
 # One can also use method="em" or method="imp", but they are even more time consuming.
 ```
-## Example 2: Genetic mapping
-R/qtl includes some utilities for estimating genetics maps and checking marker orders. In this example, we describe the use of these utilities. <br>
-### 1.Get access to some sample data. This is simulated data with some errors in marker order. <br>
-```
-data(badorder)
-summary(badorder)
-```
-### 2.Estimate recombination fractions between all pairs of markers
-```
-badorder <- est.rf(badorder)
-```
-### 3.Re-estimate the genetic map
