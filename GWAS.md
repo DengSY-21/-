@@ -301,3 +301,97 @@ table(cs$Call.rate == 1)
 #  FALSE   TRUE 
 # 605524 147151
 ```
+This tells us that 147151 SNPs have no missingness, but 605524 still have some missingness (albeit less than 10%.) As a first step, we will try to impute values for these SNPs using the **snp.imputation()** function from **snpStats**. snp.imputation() has numerous options that can be tweaked according to the needs of a specific problem. We will perform a basic imputation for now; see the R documentation for more details.
+
+The package **snpStats** uses a two step imputation procedure. First, the function determines a set of “tag” SNPS. These tag SNPs are used to predict the missing SNP values and to generate prediction rules for the missing SNPs. Second, these prediction rules are applied to the supplied genotype matrix where missing SNP values are imputed.
+
+**N.B** In the case where there is insufficient data or a lack of tagging SNPs, it is possible for the generated prediction rules to fail at yielding predictions. We will see this occur as we go through our example.
+## Implementation/tools
+To implement imputation, we will use a three step approach:
+1. Determine tag SNPs
+2. Use tag SNPs to generate prediction rules
+3. Apply these prediction rules to our genotype matrix and “fill in the blanks”
+### Determine the ‘tag’ SNPs
+A SNP is called a ‘tag’ SNP if it is being used to represent (or mark) a specific haplotype. Typically, a tag SNP is in a region of the genome with high linkage disequilibrium. As you will recall, the areas of the genome where there appears to be non-random association of alleles in the population are the areas of our interest. <br>
+
+We want to find these tag SNPs and use them to help us impute missing values. There are many algorithms that can be used to identify tag SNPs - a deep dive into this will take you into computational complexity theory. Check out <a href="https://en.wikipedia.org/wiki/Tag_SNP#Steps_for_tag_SNP_selection" title="the Wikipedia page">the Wikipedia page</a> if you want to take that plunge – for our purposes here, we will use the same function in the **snpStats** package to both identify tag SNPs and generate prediction rules. <br>
+### Use tag SNPs to generate prediction rules
+As mentioned above, I use the **snp.imputation()** function to both identify the tag SNPs and generate the prediction rules for imputing the missing values:
+```
+?snp.imputation # check out the help file -- there is a lot here 
+
+# determine tagging SNPs. Note: this can take a few minutes
+rules <- snpStats::snp.imputation(obj$genotypes, minA=0)
+# NB: minA is a threshold of the amount of existing data needed to impute missing values. Higher minA is a more stringent threshold. Here, we are setting the most loose threshold possible - the default threshold value is 5.
+```
+### Fill in the blanks
+Now that we have tagged important SNPs and created rules for imputation, we can actually implement the imputation with the **impute.snps()** function. This will “fill in the blanks” in our data set, decreasing the number of missing values.
+```
+rules_imputed_numeric <- impute.snps(rules, obj$genotypes, as.numeric = TRUE)
+# returns numeric matrix (see help documentation)
+
+# compare this column summary to the numeric format 
+# NB: using `apply()` exhausts memory, but `sapply()` will work: 
+call_rates <- sapply(X = 1:ncol(rules_imputed_numeric),
+                    FUN = function(x){sum(!is.na(rules_imputed_numeric[,x]))/nrow(rules_imputed_numeric)})
+```
+We can look at the *R2* values to check the imputation quality. This vignette has additional information about accessing the *R2* values and evaluating imputation quality with snpstats: <br>
+<a href="https://www.bioconductor.org/packages/release/bioc/vignettes/snpStats/inst/doc/imputation-vignette.pdf" title="Imputation Vignette">Imputation Vignette</a> <br>
+
+Notice that even after going through the imputation process, there are still 239687 missing values in this data set. This is not unusual for genetics data. It is not uncommon for there to be SNPs that are both missing a notable amount of values and located “far” from surrounding SNPs. In such situations, it is not possible to impute values – we do not know enough to impute a value in these cases. However, we also know that we cannot have any missing values in a regression model (which is where we are headed in our analysis). So, for the missing values that remain after imputation, we can use this case-by-case approach: <br>
+1. Does the SNP have $ > 50 %$ missingness? If so, exclude it from the analysis. We do not know enough to impute a value, and there is not enough information in this SNP for us to learn anything about our outcome(s) of interest.
+2. Does the matrix of SNP data fit into my computer’s memory? If so, then I can do a simple mean imputation for SNPs with $ %$ missingness. That is, take the mean value of that SNP across all the genotypes, and use this mean value to “fill in the blanks.” I give an example of this in just a bit.
+3. If the matrix of SNP data is too large for my computer’s memory, I can use some functions from the package **SNPRelate** to work with the SNP data without storing it as a matrix in my memory (e.g as an object in my global environment)
+
+Let’s see how many SNPs in our example data have $ %$ missingness.
+```
+# how many of the SNPs with some missingness are missing for <= 50% of observations? 
+
+sum(call_rates >= 0.5)
+# [1] 752675
+```
+So we notice that all of our SNPs with remaining missing data are missing values for no more than half of the patients in the study. I will use the simple mean imputation to address this missingness - no more SNPs need to be eliminated from the analysis.
+A couple of notes about this approach:
+1. The cutoff of 50% is an arbitrary choice on my part. You could choose 60% or 75% of you wanted to… it may even be best to examine what happens to the results for your specific data set across several cutoff values.
+2. Of course, the simple mean imputation only applies when you are talking about a continuous trait. For a categorical outcome, you would need another approach
+## When the SNP matrix fits into memory
+Again, many statistical methods we may want to apply to these data which cannot handle any missingness. As mentioned above, one simplistic yet reasonable thing to do for these values is to replace them with their HWE expected value (i.e. the average of that SNP).
+### Mean imputation
+```
+# identify which SNPs have missingness
+to_impute <- which(call_rates < 1)
+
+# Now, I will try to perform the mean imputation on the numeric matrix 
+
+#' A function for simple mean imputation of continuous SNP data
+#' @param j A column of data from a SNP matrix
+#' @return j A mean-imputed version of that data
+impute_mean <- function(j){
+  # identify missing values in a numeric vector
+  miss_idx <- which(is.na(j)) 
+  # replace missing values with that SNP mean
+  j[miss_idx] <- mean(j, na.rm = TRUE) 
+  
+  return(j)
+}
+```
+```
+# Create the fully imputed matrix - I am about to "fill in" all the blanks with 
+#   the function I just wrote
+fully_imputed_numeric <- rules_imputed_numeric
+
+# Apply function to the columns (SNPs) where there is missingness
+fully_imputed_numeric[,to_impute] <- apply(X = rules_imputed_numeric[,to_impute],
+                                           MARGIN = 2,
+                                           FUN = impute_mean)
+
+# now, for the sake of saving memory, remove the rules_imputed_numeric - won't need this again 
+rm(rules_imputed_numeric)
+```
+A brief note for those running this on macOS: when I first tried to run this **apply(...)** statement on my MacBook Pro, I got the error **vector memory exhausted (limit reached?)** several times. To address this issue, here is what worked for me:
+1. In the console, run usethis::edit_r_environ() to open the .Renviron file
+2. Edit that file by changing the R_MAX_SIZE argument to be something large, like 100Gb (‘large’, of course, is relative to the computer in use)
+3. Close the file, restart R, and try running the code again.
+Now, I can hold onto the **fully_imputed_numeric** matrix and use this to examine the data for population structure (see the next module).
+
+We can check missingness using base **R** functions in multiple chunks **R** can handle. This can take a while, but it will reassure us that we are ready to move on to something like principal component analysis (see next section).
