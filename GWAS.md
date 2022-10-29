@@ -23,12 +23,12 @@ This contains information on the subjects:
 # 1401: 11596  1  0  0  1  0
 ```
 There are 1401 rows, one for each subject. The six colums are: <br>
-1.Family ID
-2.Individual ID
-3.Paternal ID
-4.Maternal ID
-5.Sex (1=male; 2=female; other=unknown)
-6.Phenotype
+1. Family ID
+2. Individual ID
+3. Paternal ID
+4. Maternal ID
+5. Sex (1=male; 2=female; other=unknown)
+6. Phenotype
 In this data set, columns 2-4 are unimportant. In general, they are used to specify pedigrees (e.g., subject 3 is the daughter of subjects 1 and 2). In this study, however, none of the subjects are related, so the only column that is important is the first, which records the subject’s unique ID. <br>
 Phenotype is typically used to record case-control status or something like that, but it is also quite common to just record clinical/biological information in a separate spreadsheet, which is what was done here. <br>
 ```
@@ -65,12 +65,12 @@ The **.bim** file, by contrast, contains information on the genetic loci (SNPs):
 # 861473:  3  rs5970564  0 104183552  G  A
 ```
 As you can see, we have 861473 rows here, one for each SNP measured in the study. The columns are:
-1.chromosome (1-22, X, Y or 0 if unplaced)
-2.rs# or snp identifier
-3.Genetic distance (morgans)
-4.Base-pair position (bp units)
-5.Allele 1 (usually minor)
-6.Allele 2 (usually major)
+1. chromosome (1-22, X, Y or 0 if unplaced)
+2. rs# or snp identifier
+3. Genetic distance (morgans)
+4. Base-pair position (bp units)
+5. Allele 1 (usually minor)
+6. Allele 2 (usually major)
 It is pretty common for column 3 to be ignored, as it is here. <br>
 So, for example, the file tells us that genetic locus rs12565286 is located 721290 bases into chromosome 1, and that most people have a C there, but some have a G. <br>
 ## .bed
@@ -166,8 +166,8 @@ cs[143,]$MAF
 # [1] 0.101444
 ```
 Excluding SNPs on the basis of minor allele frequency is a bit controversial. It’s done, and it makes sense, but has nothing to do with quality control – there is no reason to think there are any errors in the data. The main justification is statistical: <br>
-1.If MAF is low, power is low (i.e., don’t spend multiple testing corrections on tests that are unlikely to find anything anyway)
-2.Some statistical methods perform badly with low MAF (e.g., the *chi2*-test)
+1. If MAF is low, power is low (i.e., don’t spend multiple testing corrections on tests that are unlikely to find anything anyway)
+2. Some statistical methods perform badly with low MAF (e.g., the *chi2*-test)
 An appropriate cutoff definitely depends on sample size – the larger the sample, the greater your ability to include rare SNPs. Let’s look at the distributon of MAFs:
 ```
 hist(cs$MAF, breaks=seq(0, 0.5, 0.01), border='white', col='gray', las=1)
@@ -213,8 +213,8 @@ table(obj$fam$sex, clinical$sex)
 ```
 ## Hardy-Weinberg equilibrium
 The <a href="https://en.wikipedia.org/wiki/Hardy-Weinberg_principle" title="Hardy-Weinberg principle">Hardy-Weinberg principle</a> states that under the assumption of random mating, the distribution of genotypes should follow a binomial distribution with probability π equal to the MAF. If this doesn’t happen, this is an indication that either: <br>
-1.There was a genotyping error for this SNP, or <br>
-2.Mating is not random <br>
+1. There was a genotyping error for this SNP, or <br>
+2. Mating is not random <br>
 In the real world, mating is of course not random, making it difficult to exclude SNPs on the basis of HWE. The usual recommendation is to exclude a SNP only if HWE is hugely violated (e.g., p<10−10 for a test of whether the data follow a binomial distribution).
 ```
 ggbox(cs$z.HWE)  # Mostly near zero, but some huge outliers
