@@ -78,3 +78,39 @@ Finally, the **.bed** file, which has all the data. This is by far the largest o
 To access it, you’ll have to use specialized applications. I’ll discuss two, an R package called **snpStats** and a command-line interface (CLI) called PLINK.
 # Software
 ## snpStats
+This is a Bioconductor package. So, you’ll have to install it via **BiocManager** <br>
+```
+# install.packages('BiocManager')
+# BiocManager::install('snpStats')
+library(snpStats)
+```
+To read in data, there is the **read.plink()** function: <br>
+```
+obj <- read.plink('data/GWAStutorial')
+```
+The function assumes that all the files have the same base filename, and differ only in their extension. If this is not the case, then you need to specify the filenames for the **.bed**, **.bim**, and **.fam files** separately. <br>
+From here, **snpStats** has a lot of functions. For example, here’s a plot (there are 1401 points, one for each subject) of whether the call rate (% of genotype calls that are non-missing) is related to the heterozygosity rate (% of loci that are called AB, as opposed to AA or BB): <br>
+```
+plot(row.summary(obj$genotypes)[c(1,3)])
+```
+Feel free to read the **snpStats** documentation and explore for yourself, but one standard thing that one is always interested in is to simply convert various SNPs to a regular numeric matrix so that you can analyze them using standard R tools. For example, let’s do a Fisher’s exact test to see whether CAD is associated with SNP 143:
+```
+x <- as(obj$genotypes[,143], 'numeric')
+fisher.test(drop(x), clinical$CAD)
+# 
+#   Fisher's Exact Test for Count Data
+# 
+# data:  drop(x) and clinical$CAD
+# p-value = 0.8043
+# alternative hypothesis: two.sided
+```
+A GWAS is then basically just a big loop where we repeat this analysis for every single SNP (although there are of course statistical issues that come up in doing so). <br>
+Side note: In general, code like the above is risky, as it assumes that the clinical spreadsheet is in the same order as the **.fam** and **.bed** files. This happens to be the case here:
+```
+all.equal(rownames(x), as.character(clinical$FamID))
+# [1] TRUE
+```
+But you should get in the habit of explicitly checking for things like this by including lines like this in your code: <br>
+```
+stopifnot(all.equal(rownames(obj$genotypes), as.character(clinical$FamID)))
+```
