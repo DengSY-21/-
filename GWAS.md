@@ -152,3 +152,71 @@ ggbox(rs$Call.rate, 'Individuals', 'Call rate')
 ggbox(cs$Call.rate, 'SNPs', 'Call rate')
 ```
 Individuals look good – SNPs, on the other hand, there are definitely some SNPs with lots of missing values. A common practice is to exclude SNPs with >5% or >10% missing data. We’ll actually do the subsetting a little later, right now we’re just exploring. <br>
+## Minor allele frequency
+Minor allele frequency is the percent of alleles that belong to less common category. For example:
+```
+(Tab <- table(as(obj$genotypes[,143], 'numeric')))
+# 
+#    0    1    2 
+#   17  247 1121
+(2*Tab[1] + Tab[2]) / (2*sum(Tab))
+#        0 
+# 0.101444
+cs[143,]$MAF
+# [1] 0.101444
+```
+Excluding SNPs on the basis of minor allele frequency is a bit controversial. It’s done, and it makes sense, but has nothing to do with quality control – there is no reason to think there are any errors in the data. The main justification is statistical: <br>
+1.If MAF is low, power is low (i.e., don’t spend multiple testing corrections on tests that are unlikely to find anything anyway)
+2.Some statistical methods perform badly with low MAF (e.g., the *chi2*-test)
+An appropriate cutoff definitely depends on sample size – the larger the sample, the greater your ability to include rare SNPs. Let’s look at the distributon of MAFs:
+```
+hist(cs$MAF, breaks=seq(0, 0.5, 0.01), border='white', col='gray', las=1)
+```
+With a sample size of 1401, I would say a reasonable MAF would be something like 0.001 (0.1%).
+```
+# How many SNPs would this exclude?
+table(cs$MAF < 0.001)
+# 
+#  FALSE   TRUE 
+# 801054  60418
+# Would we really learn anything from analyzing a SNP like this?
+table(as(obj$genotypes[,62], 'numeric'))
+# 
+#    0    2 
+#    1 1024
+```
+Finally, it is worth noting that no matter what the sample size, monomorphic SNPs (i.e., SNPs that show no genetic variation whatsoever in the sample) are usually problematic and should always be removed. Some code crashes when monomorphic SNPs are included; even if this weren’t the case, these SNPs cannot possibly be informative in a genome-wide association study.
+```
+table(cs$MAF == 0)                 # >26000 monomorphic SNPs
+# 
+#  FALSE   TRUE 
+# 835319  26153
+obj$map[head(which(cs$MAF==0)),]   # Note that "allele.1' is missing for these SNPs
+#            chromosome   snp.name cM position allele.1 allele.2
+# rs10458597          1 rs10458597 NA   564621     <NA>        C
+# rs307378            1   rs307378 NA  1268847     <NA>        G
+# rs12354350          1 rs12354350 NA  1411876     <NA>        C
+# rs12563290          1 rs12563290 NA  2028737     <NA>        G
+# rs3122920           1  rs3122920 NA  2449711     <NA>        G
+# rs897620            1   rs897620 NA  2787707     <NA>        C
+```
+## Sex check
+In general, since we have genetic data on the individuals in the sample, including the X chromosome, we can determine (or at least, estimate) their “genetic sex” and compare that to the sex that is recorded in their clinical information. A discrepancy is very troubling, as it may be the result of a sample being switched or mis-labeled (there are other explanations as well). <br>
+In general, though, you have to use PLINK for this. The relevant command is called **--check-sex**. <br>
+Note that there are no discrepancies between the sex recorded in **clinical.csv** and the one recorded in the **.fam** file:
+```
+table(obj$fam$sex, clinical$sex)
+#    
+#       1   2
+#   1 937   0
+#   2   0 464
+```
+## Hardy-Weinberg equilibrium
+The <a href="https://en.wikipedia.org/wiki/Hardy-Weinberg_principle" title="Hardy-Weinberg principle">Hardy-Weinberg principle</a> states that under the assumption of random mating, the distribution of genotypes should follow a binomial distribution with probability π equal to the MAF. If this doesn’t happen, this is an indication that either: <br>
+1.There was a genotyping error for this SNP, or
+2.Mating is not random
+In the real world, mating is of course not random, making it difficult to exclude SNPs on the basis of HWE. The usual recommendation is to exclude a SNP only if HWE is hugely violated (e.g., p<10−10 for a test of whether the data follow a binomial distribution).
+```
+ggbox(cs$z.HWE)  # Mostly near zero, but some huge outliers
+# Warning: Removed 26154 rows containing non-finite values (stat_boxplot).
+```
