@@ -213,10 +213,75 @@ table(obj$fam$sex, clinical$sex)
 ```
 ## Hardy-Weinberg equilibrium
 The <a href="https://en.wikipedia.org/wiki/Hardy-Weinberg_principle" title="Hardy-Weinberg principle">Hardy-Weinberg principle</a> states that under the assumption of random mating, the distribution of genotypes should follow a binomial distribution with probability π equal to the MAF. If this doesn’t happen, this is an indication that either: <br>
-1.There was a genotyping error for this SNP, or
-2.Mating is not random
+1.There was a genotyping error for this SNP, or <br>
+2.Mating is not random <br>
 In the real world, mating is of course not random, making it difficult to exclude SNPs on the basis of HWE. The usual recommendation is to exclude a SNP only if HWE is hugely violated (e.g., p<10−10 for a test of whether the data follow a binomial distribution).
 ```
 ggbox(cs$z.HWE)  # Mostly near zero, but some huge outliers
 # Warning: Removed 26154 rows containing non-finite values (stat_boxplot).
+p_hwe <- 2*pnorm(-abs(cs$z.HWE))
+table(p_hwe < 10^(-10))
+# 
+#  FALSE   TRUE 
+# 811689  23630
+# This seems utterly bizarre -- why would there be so many A/B's, but
+# no A/A's or B/B's?  Something is definitely wrong:
+table(as(obj$genotypes[,which.max(cs$z.HWE)], 'character'))
+# 
+#  A/B  B/B   NA 
+# 1382    2   17
+```
+## Heterozygosity
+A somewhat similar idea, but applied to individuals instead of SNPs (if an individual had a ton of A/B calls but no A/A or B/B calls, or vice versa, that would indicate something was wrong):
+```
+ggbox(rs$Heterozygosity)
+```
+## Pipeline
+OK, now that we’ve surveyed all these QC concepts, let’s actually do some filtering. I might choose to do something like this:
+```
+keep <- cs$MAF > 0.001 &
+  cs$Call.rate > 0.9 &
+  abs(cs$z.HWE) < 6.5
+table(keep)
+# keep
+#  FALSE   TRUE 
+# 108798 752675
+```
+So, we’re getting rid of about 100,000 SNPs and keeping about 750,000. <br>
+Now, let’s actually do the subsetting. **IMPORTANT**: The key thing to remember here is that you need to subset both the **map** object and the genotypes – if you don’t, these objects will no longer match and you will end up with a devastating row mismatch problem.
+```
+(obj$genotypes <- obj$genotypes[, keep])
+# A SnpMatrix with  1401 rows and  752675 columns
+# Row names:  10002 ... 11596 
+# Col names:  rs12565286 ... rs28729663
+obj$map <- obj$map[keep, ]
+```
+In principle, we might also be throwing some subjects out at this point, but in this particular example, none of the subjects looked questionable. Again, if throwing away subjects, you need to remember to also subset the fam object and the clinical data table. <br>
+Let’s save this QC’d data set for future use in downstream analyses:
+```
+saveRDS(obj, 'data/gwas-qc.rds')
+```
+# Imputation
+To begin, read in the qc (quality controlled) data from earlier step
+```
+# Load our packages  (same ones mentioned in the data module)
+library(snpStats)
+library(SNPRelate)
+library(data.table)
+library(magrittr) # for the pipe operator '%>%'
+
+## Register cores for parallel processing - very helpful if you're on a laptop
+library(doSNOW)
+registerDoSNOW(makeCluster(4))
+
+# Read in data object created in previous module 
+obj <- readRDS('data/gwas-qc.rds')
+obj$genotypes
+# A SnpMatrix with  1401 rows and  752675 columns
+# Row names:  10002 ... 11596 
+# Col names:  rs12565286 ... rs28729663
+# double check dimensions 
+dim(obj$map)
+# [1] 752675      6
+cs <- col.summary(obj$genotypes) # hold onto this --- will need it later 
 ```
