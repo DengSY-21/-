@@ -285,3 +285,17 @@ dim(obj$map)
 # [1] 752675      6
 cs <- col.summary(obj$genotypes) # hold onto this --- will need it later 
 ```
+In a genetics research context, most observations (e.g patients or subjects) will have missing values for at least one SNP. A common method of dealing with missing SNP data is imputation. <br>
+## Why impute?
+There are two main reasons that one would use imputation: <br>
+1.To replace missing SNP values with what these values are predicted to be, based upon a person’s (or subject’s) available SNP values near the loci of interest. For instance, suppose that in a given data set, patient A is missing SNP 123. This value for patient A could be imputed based on the patient’s other SNP values at loci near 123. <br>
+2.To infer values for SNPs that were not measured at all for any patients (subjects). This would be the case if one was to merge data from studies that examined different loci. For instance, suppose I am merging data from studies A and B. Suppose further that study A measured SNP 123 for all patients, but study B did not. In the merged data, I may need to impute values for SNP 123 for all patients in the study B data. <br>
+For the purposes of this tutorial, let us limit ourselves to scenario (1). <br>
+Recall that in the QC step of our analysis, we excluded SNPs with ≥90% missingness. However, there may still be SNPs with some missingness. SNPs that are not missing are described as “called.” The **call rate** is the proportion of genotypes that are called (see **snpStats::col.summary()** documentation for details). Therefore, a call rate of 1 indicates that a SNP has no missing values. <br>
+By examining the call rate information, we will first check how many SNPs in our qc’d data set have some missing data:
+```
+table(cs$Call.rate == 1)
+# 
+#  FALSE   TRUE 
+# 605524 147151
+```
