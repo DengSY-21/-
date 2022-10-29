@@ -505,5 +505,91 @@ manh_data <- data.frame(
 # always the same 
 
 manh_plot <- manhattan(manh_data, ylim = c(0, 20))
-```
 
+(unlist(manh_plot))
+#   xpd 
+# FALSE
+```
+Here, the x-axis of the plot is divided into “bins”, where each bin represents a chromosome. The y axis shows the negative, log-transformed p-values. Each of the p-values from our analysis is plotted in the bin corresponding to the chromosome of the gene in that particular test, and the height of the point directly correlates with the significance of the test.
+
+The goal of Manhattan plots are to help identify SNPs (or a region of SNPs) that are associated with a phenotype of interest. The blue and red lines represent values for **−log10** transformed p-values at two specified thresholds of “significance.” When we do have SNPs with a p-value that exceeds these lines, we are often interested in the one that is the highest in a given region.
+
+I could improve the Manhattan plot above by adding annotations which indicate the SNPs with the smallest p-values:
+```
+# NB:  5 × 10e−8 is a common threshold for significance in GWAS studies, 
+#   whereas 5 x 10e-6 is a common threshold for "suggestive" results
+# signif_threshold <- 5e-8 # this would be a more stringent alternative 
+suggest_threshold <- 5e-6 
+manh2 <- manhattan(manh_data, ylim = c(0, 10), annotatePval = suggest_threshold)
+
+(unlist(manh2))
+#  xpd 
+# TRUE
+```
+Based on the Manhattan plots, one region of interest could be around rs9632884 on Chromosome 9 - this SNP is above the suggestive threshold (indicated by the blue line), and there are a lot of other notable results clustered near this SNP. If I wanted to highlight a region of interest, I could do this to highlight the specific genes in this region, or <a href="https://www.genome.gov/genetics-glossary/Locus" title="locus">locus</a>. This will also allow us to practice the final piece of functionality from **qqman**:
+```
+bp_center <- manh_data %>% # NB: 'bp' stands for 'base pair'
+  filter(SNP == "rs9632884") %>%
+  pull(BP)
+
+bp_range <- c(-1, 1) * 100000 + bp_center
+
+snps_highlight <- manh_data %>%
+  filter(BP >= bp_range[1], BP <= bp_range[2], CHR == 9) %>%
+  pull(SNP)
+
+manh3 <- manhattan(
+  manh_data, 
+  ylim = c(0, 10), 
+  annotatePval = .000005, 
+  highlight = snps_highlight
+)
+
+(unlist(manh3))
+#  xpd 
+# TRUE
+```
+# SNP testing (joint approach)
+The objective of this module is to test for significant SNPs using a joint approach. For this, we will use the **penalizedLMM** R package, which is available <a href="https://github.com/areisett/penalizedLMM" title="on GitHub">on GitHub</a>. Once again, we will begin by loading the necessary libraries:
+```
+library(data.table)
+library(magrittr)
+library(qqman)
+library(snpStats)
+library(dplyr)
+
+# devtools::install_github("areisett/penalizedLMM")
+library(penalizedLMM)
+```
+Next, we load the data. Start by loading the clinical data, as this has the outcome (coronary artery disease (‘CAD’)) we need for our models.
+```
+clinical <- fread("data/GWAStutorial_clinical.csv")
+# str(clinical) # if you need to remind yourself of what is here
+```
+We also need to load the genetic data. For this section, we will work with the quality controlled (QC’d) data from the **SNPRelate** package (see module 1). We will also need the “.bim” file from the original data for making plots. Finally, we need our design matrix *X* with no missing values (this is the *X* we obtained by our imputation procedures).
+```
+# load QC'd data:
+qc_dat <- readRDS('data/gwas-qc.rds')
+# load the bim file
+bim <- fread('data/GWAStutorial.bim')
+# load design matrix of SNP data (you would need to complete the imputation module first)
+X <- readRDS(file = "data/fully_imputed_numeric.rds")
+```
+If you completed the population structure module, you should load the principal components as well - we need them for our analysis. If you did not work through the population structure module, you can skip this step.
+```
+# load principal components 
+PCs <- readRDS(file = "data/PCs_base.rds") %>%
+  as.data.frame()
+
+names(PCs) <- paste0("PC", 1:ncol(PCs))
+```
+## Constructing the model
+```
+# the CAD outcome is binary (0/1), so it may not be the best place to begin for the 
+#   joint model example 
+joint_model <- plmm(X = X,
+                    y = clinical$CAD,
+                    intercept = FALSE)
+```
+## Examining the results
+## Comparing the results of the marginal and joint approaches
