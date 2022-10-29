@@ -114,3 +114,41 @@ But you should get in the habit of explicitly checking for things like this by i
 ```
 stopifnot(all.equal(rownames(obj$genotypes), as.character(clinical$FamID)))
 ```
+# Quality control
+The first step in any GWAS is to examine the data for potential problems. You don’t want to carry out a GWAS, think you have an exciting result, then discover that it was all just an artifact of bad data. This is a fairly “clean” data set, so it’s not really ideal for showing these steps, but I’ll go through them anyway. There is also a sample data set in the **snpStats** package with some (at least one) bad samples; might be worth checking that one out as well.
+```
+data(for.exercise)
+snps.10
+# A SnpMatrix with  1000 rows and  28501 columns
+# Row names:  jpt.869 ... ceu.464 
+# Col names:  rs7909677 ... rs12218790
+```
+Most of these QC steps involve calculating summaries at the individual (“row”) level or the SNP (“column”) level: <br>
+```
+rs <- row.summary(obj$genotypes)
+cs <- col.summary(obj$genotypes)
+ggbox <- function (X, xlab = "ind", ylab = "values") {
+    if (!is.data.frame(X)) X <- as.data.frame(X)
+    ggplot2::ggplot(utils::stack(X), ggplot2::aes_string("ind", 
+        "values")) + ggplot2::geom_boxplot() + ggplot2::xlab(xlab) + 
+        ggplot2::ylab(ylab)
+}
+```
+## Chromosome check
+This isn’t exactly a QC step, but extremely helpful to do as a first step when getting any genetic data: what chromosomes are the SNPs on?
+```
+table(obj$map$chromosome)
+# 
+#     1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17 
+# 71038 73717 60565 55675 56178 54176 46391 48299 41110 47930 44213 42124 34262 28054 25900 27591 19939 
+#    18    19    20    21    22 
+# 26231 11482 22753 12463 11382
+```
+For the most part, the chromosomes are ordered by size, so chromosomes 1 and 2 are much bigger than (and have many more SNPs than) chromosomes 21 and 22. This particular data set only contains SNPs from the “autosomal” chromosomes (1-22); we do not have any data on X and Y chromosomes. Also, there are no “strange” chromosomes, such as MT (the mitochondrial chromosome), XY (the pseudo-autosomal region of chromosome X), and 0 (SNPs that cannot be mapped to any chromosomes, which can happen for a variety of reasons). Depending on the scientific goal, we may wish to subset our analysis down to include only the autosomal chromosomes, although this isn’t necessary here since it has already been done. <br>
+## Missing data
+Any SNP with a lot of missing data is probably questionable; these SNPs are often excluded from analysis (although we will talk about other approaches later). Likewise, any sample with lots of missing data suggests that there may be issues with the processing of that sample.
+```
+ggbox(rs$Call.rate, 'Individuals', 'Call rate')
+ggbox(cs$Call.rate, 'SNPs', 'Call rate')
+```
+Individuals look good – SNPs, on the other hand, there are definitely some SNPs with lots of missing values. A common practice is to exclude SNPs with >5% or >10% missing data. We’ll actually do the subsetting a little later, right now we’re just exploring. <br>
